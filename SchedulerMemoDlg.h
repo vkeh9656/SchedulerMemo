@@ -36,4 +36,6 @@ protected:
 public:
 	CMonthCalCtrl m_my_calendar;
 	afx_msg void OnMcnSelchangeMyCalendar(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnBnClickedSetBtn();
+	CStatic m_date_static;
 };

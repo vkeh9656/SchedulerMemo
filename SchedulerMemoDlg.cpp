@@ -27,12 +27,14 @@ void CSchedulerMemoDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_MY_CALENDAR, m_my_calendar);
+	DDX_Control(pDX, IDC_DATE_STATIC, m_date_static);
 }
 
 BEGIN_MESSAGE_MAP(CSchedulerMemoDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_NOTIFY(MCN_SELCHANGE, IDC_MY_CALENDAR, &CSchedulerMemoDlg::OnMcnSelchangeMyCalendar)
+	ON_BN_CLICKED(IDC_SET_BTN, &CSchedulerMemoDlg::OnBnClickedSetBtn)
 END_MESSAGE_MAP()
 
 
@@ -48,7 +50,10 @@ BOOL CSchedulerMemoDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	m_font.CreatePointFont(160, L"굴림");
+	m_date_static.SetFont(&m_font);
 	m_my_calendar.SetFont(&m_font);
+
+	OnMcnSelchangeMyCalendar(NULL, NULL);
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -90,11 +95,59 @@ HCURSOR CSchedulerMemoDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
+wchar_t* gp_week_str[7] = { L"일", L"월", L"화", L"수", L"목", L"금", L"토" };
 
 void CSchedulerMemoDlg::OnMcnSelchangeMyCalendar(NMHDR* pNMHDR, LRESULT* pResult)
 {
-	LPNMSELCHANGE pSelChange = reinterpret_cast<LPNMSELCHANGE>(pNMHDR);
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	*pResult = 0;
+	/*LPNMSELCHANGE pSelChange = reinterpret_cast<LPNMSELCHANGE>(pNMHDR);*/
+	SYSTEMTIME cur_time;
+	m_my_calendar.GetCurSel(&cur_time);
+
+	CString str;
+	str.Format(L"%d년 %d월 %d일 [ %s요일 ]", cur_time.wYear, cur_time.wMonth, cur_time.wDay,
+		gp_week_str[cur_time.wDayOfWeek]);
+	SetDlgItemText(IDC_DATE_STATIC, str);
+
+	str.Format(L"%04d%02d%02d.dat", cur_time.wYear, cur_time.wMonth, cur_time.wDay);
+	FILE* p_file;
+	if (0 == _wfopen_s(&p_file, str, L"rt,ccs=UNICODE"))
+	{
+		wchar_t temp_str[1024];
+		str.Empty();
+		while (fgetws(temp_str, 1024, p_file) != NULL)
+		{
+			str += temp_str;
+		}
+
+		fclose(p_file);
+
+		str.Replace(L"\n", L"\r\n");
+		SetDlgItemText(IDC_NOTE_EDIT, str);
+	}
+	else
+	{
+		SetDlgItemText(IDC_NOTE_EDIT, L"");
+	}
+
+	if (pResult != NULL) *pResult = 0;
+}
+
+
+void CSchedulerMemoDlg::OnBnClickedSetBtn()
+{
+	SYSTEMTIME cur_time;
+	m_my_calendar.GetCurSel(&cur_time);
+
+	CString str;
+	str.Format(L"%04d%02d%02d.dat", cur_time.wYear, cur_time.wMonth, cur_time.wDay);
+
+	FILE* p_file;
+	if (0 == _wfopen_s(&p_file, str, L"wt,ccs=UNICODE"))	// 기본은 ANSI, UNICODE 형식으로 쓰려면 이렇게 써야함.
+	{
+		GetDlgItemText(IDC_NOTE_EDIT, str);
+		str.Replace(L"\r\n", L"\n");
+		fwrite((const wchar_t *)str, (str.GetLength() + 1) * 2, 1, p_file);
+		fclose(p_file);
+	}
+
 }
